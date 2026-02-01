@@ -199,6 +199,18 @@ function viewJob(id) {
             line.textContent = msg.data;
             output.appendChild(line);
             output.scrollTop = output.scrollHeight;
+        } else if (msg.type === 'progress') {
+            // Update the last line if it's a progress line, otherwise add new
+            let lastLine = output.lastElementChild;
+            if (lastLine && lastLine.classList.contains('progress-line')) {
+                lastLine.textContent = msg.data;
+            } else {
+                const line = document.createElement('div');
+                line.className = 'progress-line';
+                line.textContent = msg.data;
+                output.appendChild(line);
+            }
+            output.scrollTop = output.scrollHeight;
         } else if (msg.type === 'done') {
             const line = document.createElement('div');
             line.className = `mt-2 pt-2 border-t border-gray-700 status-${msg.status}`;

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 	"srv.exe.dev/db/dbgen"
 )
@@ -370,24 +371,35 @@ func (s *Server) HandleJobWebSocket(w http.ResponseWriter, r *http.Request) {
 	for _, line := range job.Output {
 		conn.WriteJSON(map[string]any{"type": "output", "data": line})
 	}
-	status := job.Status
+	jobStatus := job.Status
 	job.mu.RUnlock()
 	
-	if status != "running" {
-		conn.WriteJSON(map[string]any{"type": "done", "status": status})
+	if jobStatus != "running" {
+		conn.WriteJSON(map[string]any{"type": "done", "status": jobStatus})
 		return
 	}
 	
 	// Stream new output
-	for line := range ch {
-		if line == "__DONE__" {
+	for msg := range ch {
+		if msg == "__DONE__" {
 			job.mu.RLock()
 			status := job.Status
 			job.mu.RUnlock()
 			conn.WriteJSON(map[string]any{"type": "done", "status": status})
 			return
 		}
-		if err := conn.WriteJSON(map[string]any{"type": "output", "data": line}); err != nil {
+		
+		// Parse message type (line: or progress:)
+		msgType := "output"
+		data := msg
+		if strings.HasPrefix(msg, "progress:") {
+			msgType = "progress"
+			data = strings.TrimPrefix(msg, "progress:")
+		} else if strings.HasPrefix(msg, "line:") {
+			data = strings.TrimPrefix(msg, "line:")
+		}
+		
+		if err := conn.WriteJSON(map[string]any{"type": msgType, "data": data}); err != nil {
 			return
 		}
 	}
@@ -456,21 +468,20 @@ func (jm *JobManager) RunJob(id int64, args []string) {
 	cmd := exec.CommandContext(ctx, jm.server.RsyncPath, args...)
 	cmd.Dir = jm.server.WorkDir
 	
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	
-	if err := cmd.Start(); err != nil {
+	// Use PTY for proper progress output
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
 		job.addOutput(fmt.Sprintf("Error starting rsync: %v", err))
 		job.finish("failed", 1)
 		jm.saveJob(job, startTime)
 		return
 	}
+	defer ptmx.Close()
 	
-	// Read output
-	go jm.readOutput(job, stdout)
-	go jm.readOutput(job, stderr)
+	// Read output with progress support
+	go jm.readPtyOutput(job, ptmx)
 	
-	err := cmd.Wait()
+	err = cmd.Wait()
 	exitCode := 0
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -489,10 +500,39 @@ func (jm *JobManager) RunJob(id int64, args []string) {
 	jm.saveJob(job, startTime)
 }
 
-func (jm *JobManager) readOutput(job *Job, r io.Reader) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		job.addOutput(scanner.Text())
+func (jm *JobManager) readPtyOutput(job *Job, r io.Reader) {
+	buf := make([]byte, 1024)
+	var lineBuf strings.Builder
+	
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			chunk := string(buf[:n])
+			
+			// Process chunk character by character
+			for _, ch := range chunk {
+				if ch == '\r' {
+					// Carriage return - send current line as progress update
+					if lineBuf.Len() > 0 {
+						job.addProgress(lineBuf.String())
+						lineBuf.Reset()
+					}
+				} else if ch == '\n' {
+					// Newline - send as complete line
+					job.addOutput(lineBuf.String())
+					lineBuf.Reset()
+				} else {
+					lineBuf.WriteRune(ch)
+				}
+			}
+		}
+		if err != nil {
+			// Send any remaining content
+			if lineBuf.Len() > 0 {
+				job.addOutput(lineBuf.String())
+			}
+			break
+		}
 	}
 }
 
@@ -544,11 +584,33 @@ func (j *Job) addOutput(line string) {
 	j.Output = append(j.Output, line)
 	for ch := range j.subscribers {
 		select {
-		case ch <- line:
+		case ch <- "line:" + line:
 		default:
 		}
 	}
 	j.mu.Unlock()
+}
+
+func (j *Job) addProgress(line string) {
+	j.mu.Lock()
+	// Update last line if it was progress, otherwise append
+	if len(j.Output) > 0 && j.isProgressLine(j.Output[len(j.Output)-1]) {
+		j.Output[len(j.Output)-1] = line
+	} else {
+		j.Output = append(j.Output, line)
+	}
+	for ch := range j.subscribers {
+		select {
+		case ch <- "progress:" + line:
+		default:
+		}
+	}
+	j.mu.Unlock()
+}
+
+func (j *Job) isProgressLine(line string) bool {
+	// Progress lines typically contain % or transfer rate indicators
+	return strings.Contains(line, "%") || strings.Contains(line, "/s") || strings.Contains(line, "xfr#")
 }
 
 func (j *Job) finish(status string, exitCode int) {
