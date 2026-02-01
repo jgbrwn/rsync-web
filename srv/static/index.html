@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rsync-web</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .output-scroll { max-height: 400px; overflow-y: auto; }
+        .file-entry:hover { background-color: #f3f4f6; }
+        .status-running { color: #2563eb; }
+        .status-completed { color: #16a34a; }
+        .status-failed { color: #dc2626; }
+        .status-cancelled { color: #9333ea; }
+        .status-pending { color: #ca8a04; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800">🔄 rsync-web</h1>
+                <div id="status-badge" class="text-sm"></div>
+            </div>
+            <p id="workdir" class="text-gray-600 mt-2"></p>
+        </div>
+
+        <!-- Warning Banner -->
+        <div id="rsync-warning" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <strong>Warning:</strong> rsync is not available on this system. Please install it to use this application.
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column: Command Builder -->
+            <div class="space-y-6">
+                <!-- Source/Destination -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">📁 Source & Destination</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="source" class="flex-1 border rounded-md px-3 py-2" placeholder="/path/to/source or host:/path">
+                            <button onclick="openBrowser('source')" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">Browse</button>
+                            <button onclick="openHostPicker('source')" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600">SSH</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="destination" class="flex-1 border rounded-md px-3 py-2" placeholder="/path/to/dest or host:/path">
+                            <button onclick="openBrowser('destination')" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">Browse</button>
+                            <button onclick="openHostPicker('destination')" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600">SSH</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">⚙️ Options</h2>
+                    
+                    <!-- Common Options -->
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-a" checked class="rsync-opt" data-opt="-a">
+                            <span class="text-sm">-a (archive)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-v" checked class="rsync-opt" data-opt="-v">
+                            <span class="text-sm">-v (verbose)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-z" class="rsync-opt" data-opt="-z">
+                            <span class="text-sm">-z (compress)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-P" checked class="rsync-opt" data-opt="-P">
+                            <span class="text-sm">-P (progress)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-n" class="rsync-opt" data-opt="-n">
+                            <span class="text-sm">-n (dry-run)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-delete" class="rsync-opt" data-opt="--delete">
+                            <span class="text-sm">--delete</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-h" checked class="rsync-opt" data-opt="-h">
+                            <span class="text-sm">-h (human-readable)</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="opt-stats" class="rsync-opt" data-opt="--stats">
+                            <span class="text-sm">--stats</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Advanced Options Toggle -->
+                    <button onclick="toggleAdvanced()" class="text-blue-500 text-sm mb-2">▼ More Options</button>
+                    
+                    <div id="advanced-options" class="hidden">
+                        <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-r">
+                                <span>-r (recursive)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-l">
+                                <span>-l (symlinks)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-p">
+                                <span>-p (perms)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-t">
+                                <span>-t (times)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-g">
+                                <span>-g (group)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-o">
+                                <span>-o (owner)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-D">
+                                <span>-D (devices)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="-u">
+                                <span>-u (update)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--partial">
+                                <span>--partial</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--append">
+                                <span>--append</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--ignore-existing">
+                                <span>--ignore-existing</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--size-only">
+                                <span>--size-only</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--checksum">
+                                <span>--checksum</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" class="rsync-opt" data-opt="--backup">
+                                <span>--backup</span>
+                            </label>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">--exclude (one per line)</label>
+                            <textarea id="excludes" class="w-full border rounded-md px-3 py-2 text-sm" rows="2" placeholder="*.tmp&#10;.git"></textarea>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Custom options</label>
+                            <input type="text" id="custom-opts" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="--bwlimit=1000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Command Preview & Run -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">🚀 Command</h2>
+                    <pre id="command-preview" class="bg-gray-800 text-green-400 p-4 rounded-md text-sm overflow-x-auto mb-4"></pre>
+                    <div class="flex gap-2">
+                        <button onclick="runCommand()" id="run-btn" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold">▶ Run</button>
+                        <button onclick="copyCommand()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">📋 Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Jobs & Output -->
+            <div class="space-y-6">
+                <!-- Running Jobs -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">📊 Jobs</h2>
+                    <div id="jobs-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                </div>
+
+                <!-- Output -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">📜 Output</h2>
+                        <span id="current-job-label" class="text-sm text-gray-500"></span>
+                    </div>
+                    <div id="output" class="bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-xs output-scroll">
+                        <div class="text-gray-500">Select a job to view output...</div>
+                    </div>
+                    <button id="cancel-btn" onclick="cancelJob()" class="hidden mt-2 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">⏹ Cancel</button>
+                </div>
+
+                <!-- History -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">📜 History</h2>
+                    <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Browser Modal -->
+    <div id="browser-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Browse Files</h3>
+                <button onclick="closeBrowser()" class="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div class="p-4 border-b">
+                <div class="text-sm text-gray-600" id="browser-path"></div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <div id="browser-entries" class="space-y-1"></div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-2">
+                <button onclick="selectCurrentPath()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Select Current Folder</button>
+                <button onclick="closeBrowser()" class="bg-gray-300 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SSH Host Picker Modal -->
+    <div id="ssh-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold">SSH Hosts</h3>
+                <button onclick="closeHostPicker()" class="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div class="p-4">
+                <div id="ssh-hosts-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                <div class="mt-4 pt-4 border-t">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Remote path</label>
+                    <input type="text" id="ssh-remote-path" class="w-full border rounded-md px-3 py-2" placeholder="/path/on/remote">
+                </div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-2">
+                <button onclick="closeHostPicker()" class="bg-gray-300 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
