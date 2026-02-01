@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCommandPreview();
     
     // Update preview on input changes
-    document.querySelectorAll('.rsync-opt, #source, #destination, #excludes, #custom-opts').forEach(el => {
+    document.querySelectorAll('.rsync-opt, #source, #destination, #excludes, #custom-opts, #timeout').forEach(el => {
         el.addEventListener('change', updateCommandPreview);
         el.addEventListener('input', updateCommandPreview);
     });
@@ -108,6 +108,12 @@ function getSelectedOptions() {
     document.querySelectorAll('.rsync-opt:checked').forEach(el => {
         opts.push(el.dataset.opt);
     });
+    
+    // Handle timeout
+    const timeout = document.getElementById('timeout')?.value?.trim();
+    if (timeout) {
+        opts.push(`--timeout=${timeout}`);
+    }
     
     // Handle excludes
     const excludes = document.getElementById('excludes').value.trim();
@@ -326,16 +332,23 @@ function selectCurrentPath() {
 }
 
 // SSH Host Picker
+let selectedSSHHost = null;
+
 function openHostPicker(target) {
     sshTarget = target;
+    selectedSSHHost = null;
+    document.getElementById('ssh-remote-path').value = '';
     document.getElementById('ssh-modal').classList.remove('hidden');
-    
+    renderSSHHosts();
+}
+
+function renderSSHHosts() {
     const list = document.getElementById('ssh-hosts-list');
     if (!sshHosts || sshHosts.length === 0) {
         list.innerHTML = '<div class="text-gray-500 text-sm">No SSH hosts found in ~/.ssh/config</div>';
     } else {
         list.innerHTML = sshHosts.map(host => `
-            <div class="p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+            <div class="p-2 rounded cursor-pointer ${selectedSSHHost === host.name ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50 hover:bg-gray-100'}"
                  onclick="selectHost('${host.name}')">
                 <div class="font-medium">${escapeHtml(host.name)}</div>
                 <div class="text-sm text-gray-500">
@@ -351,8 +364,17 @@ function closeHostPicker() {
 }
 
 function selectHost(name) {
-    const remotePath = document.getElementById('ssh-remote-path').value || '~/';
-    document.getElementById(sshTarget).value = `${name}:${remotePath}`;
+    selectedSSHHost = name;
+    renderSSHHosts();
+}
+
+function applySSHHost() {
+    if (!selectedSSHHost) {
+        alert('Please select a host first');
+        return;
+    }
+    const remotePath = document.getElementById('ssh-remote-path').value || '';
+    document.getElementById(sshTarget).value = `${selectedSSHHost}:${remotePath}`;
     closeHostPicker();
     updateCommandPreview();
 }
