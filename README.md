@@ -2,7 +2,7 @@
 
 A modern, lightweight web UI for rsync with real-time output streaming via WebSockets.
 
-![rsync-web screenshot](screenshot.png)
+![rsync-web screenshot](screenshot.png?v=2)
 
 ## Features
 
