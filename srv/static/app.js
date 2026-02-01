@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStatus();
     loadHistory();
     loadSSHHosts();
+    loadDefaults();
     updateCommandPreview();
     
     // Update preview on input changes
@@ -278,6 +279,87 @@ async function deleteHistory(id) {
 function copyCommand() {
     const cmd = document.getElementById('command-preview').textContent;
     navigator.clipboard.writeText(cmd);
+}
+
+// Default options persistence
+function saveDefaults() {
+    const defaults = {
+        checkboxes: {},
+        timeout: document.getElementById('timeout')?.value || '',
+        excludes: document.getElementById('excludes')?.value || '',
+        customOpts: document.getElementById('custom-opts')?.value || ''
+    };
+    
+    document.querySelectorAll('.rsync-opt').forEach(el => {
+        defaults.checkboxes[el.dataset.opt] = el.checked;
+    });
+    
+    localStorage.setItem('rsync-web-defaults', JSON.stringify(defaults));
+    
+    // Show feedback
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Saved!';
+    btn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+    btn.classList.add('bg-green-500');
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('bg-green-500');
+        btn.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+    }, 1500);
+}
+
+function loadDefaults() {
+    const saved = localStorage.getItem('rsync-web-defaults');
+    if (!saved) return;
+    
+    try {
+        const defaults = JSON.parse(saved);
+        
+        // Restore checkboxes
+        if (defaults.checkboxes) {
+            document.querySelectorAll('.rsync-opt').forEach(el => {
+                if (defaults.checkboxes.hasOwnProperty(el.dataset.opt)) {
+                    el.checked = defaults.checkboxes[el.dataset.opt];
+                }
+            });
+        }
+        
+        // Restore other fields
+        if (defaults.timeout && document.getElementById('timeout')) {
+            document.getElementById('timeout').value = defaults.timeout;
+        }
+        if (defaults.excludes && document.getElementById('excludes')) {
+            document.getElementById('excludes').value = defaults.excludes;
+        }
+        if (defaults.customOpts && document.getElementById('custom-opts')) {
+            document.getElementById('custom-opts').value = defaults.customOpts;
+        }
+    } catch (e) {
+        console.error('Failed to load defaults:', e);
+    }
+}
+
+function clearDefaults() {
+    localStorage.removeItem('rsync-web-defaults');
+    
+    // Reset to original defaults
+    document.querySelectorAll('.rsync-opt').forEach(el => {
+        el.checked = ['-a', '-v', '-P', '-h'].includes(el.dataset.opt);
+    });
+    if (document.getElementById('timeout')) document.getElementById('timeout').value = '';
+    if (document.getElementById('excludes')) document.getElementById('excludes').value = '';
+    if (document.getElementById('custom-opts')) document.getElementById('custom-opts').value = '';
+    
+    updateCommandPreview();
+    
+    // Show feedback
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Cleared!';
+    setTimeout(() => {
+        btn.textContent = originalText;
+    }, 1500);
 }
 
 function toggleAdvanced() {

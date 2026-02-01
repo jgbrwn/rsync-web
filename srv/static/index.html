@@ -201,9 +201,13 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h2 class="text-xl font-semibold mb-4">🚀 Command</h2>
                     <pre id="command-preview" class="bg-gray-800 text-green-400 p-4 rounded-md text-sm overflow-x-auto mb-4"></pre>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 mb-2">
                         <button onclick="runCommand()" id="run-btn" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold">▶ Run</button>
                         <button onclick="copyCommand()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">📋 Copy</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="saveDefaults()" class="flex-1 bg-indigo-500 text-white px-3 py-1.5 rounded-md hover:bg-indigo-600 text-sm">💾 Save Options as Default</button>
+                        <button onclick="clearDefaults()" class="bg-gray-400 text-white px-3 py-1.5 rounded-md hover:bg-gray-500 text-sm">Clear</button>
                     </div>
                 </div>
             </div>
