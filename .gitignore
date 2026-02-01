@@ -4,10 +4,10 @@
 *.db-wal
 
 # Binaries
-#rsync-web
+rsync-web
 #rsync-web-linux-amd64
 #rsync-web-freebsd-amd64
-#rsync-web-freebsd
+rsync-web-freebsd
 
 # IDE
 .idea/
