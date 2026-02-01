@@ -331,7 +331,7 @@ function openHostPicker(target) {
     document.getElementById('ssh-modal').classList.remove('hidden');
     
     const list = document.getElementById('ssh-hosts-list');
-    if (sshHosts.length === 0) {
+    if (!sshHosts || sshHosts.length === 0) {
         list.innerHTML = '<div class="text-gray-500 text-sm">No SSH hosts found in ~/.ssh/config</div>';
     } else {
         list.innerHTML = sshHosts.map(host => `
