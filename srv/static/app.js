@@ -140,18 +140,103 @@ function updateCommandPreview() {
     
     const cmd = `rsync ${opts.join(' ')} ${source} ${dest}`;
     document.getElementById('command-preview').textContent = cmd;
+    
+    // Validate and update Run button state
+    validateCommand();
+}
+
+function validateCommand() {
+    const source = document.getElementById('source').value.trim();
+    const dest = document.getElementById('destination').value.trim();
+    const runBtn = document.getElementById('run-btn');
+    const errors = [];
+    
+    // 1. Source and destination must be provided
+    if (!source) {
+        errors.push('Source is required');
+    }
+    if (!dest) {
+        errors.push('Destination is required');
+    }
+    
+    // 2. Source and destination cannot be the same
+    if (source && dest && source === dest) {
+        errors.push('Source and destination cannot be the same');
+    }
+    
+    // 3. Check for dangerous patterns
+    if (source === '/' || source === '/*' || dest === '/') {
+        errors.push('Cannot use root directory');
+    }
+    
+    // 4. Warn if --delete is used without dry-run on first attempt
+    const hasDelete = document.querySelector('.rsync-opt[data-opt="--delete"]:checked');
+    const hasDryRun = document.querySelector('.rsync-opt[data-opt="-n"]:checked');
+    
+    // 5. At least one of source or dest should be specified (not just placeholders)
+    const sourceIsRemote = source.includes(':');
+    const destIsRemote = dest.includes(':');
+    
+    // Update UI
+    const errorDiv = document.getElementById('validation-errors');
+    if (errors.length > 0) {
+        runBtn.disabled = true;
+        runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        runBtn.classList.remove('hover:bg-green-600');
+        if (errorDiv) {
+            errorDiv.innerHTML = errors.map(e => `<div class="text-red-500 text-sm">⚠ ${e}</div>`).join('');
+            errorDiv.classList.remove('hidden');
+        }
+    } else {
+        runBtn.disabled = false;
+        runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        runBtn.classList.add('hover:bg-green-600');
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+        }
+    }
+    
+    // Show warnings (non-blocking)
+    const warningDiv = document.getElementById('validation-warnings');
+    const warnings = [];
+    
+    if (hasDelete && !hasDryRun) {
+        warnings.push('--delete is enabled. Consider a dry-run (-n) first!');
+    }
+    
+    if (sourceIsRemote && destIsRemote) {
+        warnings.push('Both source and destination are remote. This requires rsync on the remote.');
+    }
+    
+    if (warningDiv) {
+        if (warnings.length > 0) {
+            warningDiv.innerHTML = warnings.map(w => `<div class="text-yellow-600 text-sm">⚠ ${w}</div>`).join('');
+            warningDiv.classList.remove('hidden');
+        } else {
+            warningDiv.classList.add('hidden');
+        }
+    }
+    
+    return errors.length === 0;
 }
 
 async function runCommand() {
-    const source = document.getElementById('source').value;
-    const dest = document.getElementById('destination').value;
-    
-    if (!source || !dest) {
-        alert('Please specify source and destination');
+    if (!validateCommand()) {
         return;
     }
     
+    const source = document.getElementById('source').value.trim();
+    const dest = document.getElementById('destination').value.trim();
     const opts = getSelectedOptions();
+    
+    // Confirm if --delete is used without dry-run
+    const hasDelete = document.querySelector('.rsync-opt[data-opt="--delete"]:checked');
+    const hasDryRun = document.querySelector('.rsync-opt[data-opt="-n"]:checked');
+    if (hasDelete && !hasDryRun) {
+        if (!confirm('Warning: --delete is enabled without dry-run. Files in destination may be permanently deleted. Continue?')) {
+            return;
+        }
+    }
     
     try {
         const res = await fetch('/api/run', {

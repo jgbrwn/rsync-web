@@ -200,7 +200,9 @@
                 <!-- Command Preview & Run -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h2 class="text-xl font-semibold mb-4">🚀 Command</h2>
-                    <pre id="command-preview" class="bg-gray-800 text-green-400 p-4 rounded-md text-sm overflow-x-auto mb-4"></pre>
+                    <pre id="command-preview" class="bg-gray-800 text-green-400 p-4 rounded-md text-sm overflow-x-auto mb-2"></pre>
+                    <div id="validation-errors" class="mb-2 hidden"></div>
+                    <div id="validation-warnings" class="mb-2 hidden"></div>
                     <div class="flex gap-2 mb-2">
                         <button onclick="runCommand()" id="run-btn" class="flex-1 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold">▶ Run</button>
                         <button onclick="copyCommand()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">📋 Copy</button>
