@@ -3,24 +3,22 @@ package srv
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sync"
 
 	"srv.exe.dev/db"
 )
 
 type Server struct {
-	DB           *sql.DB
-	TemplatesDir string
-	StaticDir    string
-	WorkDir      string
-	RsyncPath    string
-	JobManager   *JobManager
+	DB         *sql.DB
+	WorkDir    string
+	RsyncPath  string
+	JobManager *JobManager
+	staticFS   fs.FS
 }
 
 type JobManager struct {
@@ -39,9 +37,6 @@ type Job struct {
 }
 
 func New(dbPath, workDir string) (*Server, error) {
-	_, thisFile, _, _ := runtime.Caller(0)
-	baseDir := filepath.Dir(thisFile)
-	
 	if workDir == "" {
 		var err error
 		workDir, err = os.Getwd()
@@ -52,11 +47,16 @@ func New(dbPath, workDir string) (*Server, error) {
 	
 	rsyncPath, _ := exec.LookPath("rsync")
 	
+	// Get embedded static files
+	staticSub, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		return nil, fmt.Errorf("get static fs: %w", err)
+	}
+	
 	srv := &Server{
-		TemplatesDir: filepath.Join(baseDir, "templates"),
-		StaticDir:    filepath.Join(baseDir, "static"),
-		WorkDir:      workDir,
-		RsyncPath:    rsyncPath,
+		WorkDir:   workDir,
+		RsyncPath: rsyncPath,
+		staticFS:  staticSub,
 	}
 	
 	srv.JobManager = &JobManager{
@@ -101,8 +101,8 @@ func (s *Server) Serve(addr string) error {
 	// WebSocket
 	mux.HandleFunc("/ws/job/{id}", s.HandleJobWebSocket)
 	
-	// Static
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.StaticDir))))
+	// Static files (embedded)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(s.staticFS))))
 	
 	slog.Info("starting rsync-web", "addr", addr, "workdir", s.WorkDir, "rsync", s.RsyncPath)
 	return http.ListenAndServe(addr, mux)

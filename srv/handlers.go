@@ -19,13 +19,23 @@ import (
 	"srv.exe.dev/db/dbgen"
 )
 
+func (s *Server) HandleIndex(w http.ResponseWriter, r *http.Request) {
+	data, err := s.staticFS.Open("index.html")
+	if err != nil {
+		http.Error(w, "index.html not found", http.StatusInternalServerError)
+		return
+	}
+	defer data.Close()
+	
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	io.Copy(w, data)
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func (s *Server) HandleIndex(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, filepath.Join(s.StaticDir, "index.html"))
-}
+
 
 type StatusResponse struct {
 	RsyncAvailable bool   `json:"rsync_available"`
