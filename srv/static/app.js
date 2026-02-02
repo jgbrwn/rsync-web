@@ -469,11 +469,30 @@ function openBrowser(target) {
     browserTarget = target;
     browserCurrentPath = '.';
     document.getElementById('browser-modal').classList.remove('hidden');
+    
+    // Reset and hide trailing slash option
+    const trailingSlashDiv = document.getElementById('browser-trailing-slash');
+    const trailingSlashCheckbox = document.getElementById('trailing-slash-checkbox');
+    if (trailingSlashDiv) trailingSlashDiv.classList.add('hidden');
+    if (trailingSlashCheckbox) trailingSlashCheckbox.checked = false;
+    
     loadBrowserPath('.');
 }
 
 function closeBrowser() {
     document.getElementById('browser-modal').classList.add('hidden');
+}
+
+function updateTrailingSlashVisibility() {
+    const trailingSlashDiv = document.getElementById('browser-trailing-slash');
+    if (!trailingSlashDiv) return;
+    
+    // Only show for source selection, not destination
+    if (browserTarget === 'source') {
+        trailingSlashDiv.classList.remove('hidden');
+    } else {
+        trailingSlashDiv.classList.add('hidden');
+    }
 }
 
 async function loadBrowserPath(path) {
@@ -493,6 +512,9 @@ async function loadBrowserPath(path) {
                 ${!entry.is_dir ? `<span class="text-sm text-gray-500">${formatSize(entry.size)}</span>` : ''}
             </div>
         `).join('');
+        
+        // Show trailing slash option for source selection
+        updateTrailingSlashVisibility();
     } catch (e) {
         console.error('Failed to browse:', e);
     }
@@ -505,7 +527,19 @@ function selectFile(path) {
 }
 
 function selectCurrentPath() {
-    document.getElementById(browserTarget).value = browserCurrentPath;
+    let path = browserCurrentPath;
+    
+    // Add trailing slash if checkbox is checked (only for source)
+    if (browserTarget === 'source') {
+        const trailingSlashCheckbox = document.getElementById('trailing-slash-checkbox');
+        if (trailingSlashCheckbox && trailingSlashCheckbox.checked) {
+            if (!path.endsWith('/')) {
+                path += '/';
+            }
+        }
+    }
+    
+    document.getElementById(browserTarget).value = path;
     closeBrowser();
     updateCommandPreview();
 }
