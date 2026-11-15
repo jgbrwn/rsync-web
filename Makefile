@@ -3,13 +3,13 @@
 BINARY=rsync-web
 
 build:
-	go build -o $(BINARY) ./cmd/srv
+	go build -trimpath -o $(BINARY) ./cmd/srv
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o $(BINARY)-linux-amd64 ./cmd/srv
+	GOOS=linux GOARCH=amd64 go build -trimpath -o $(BINARY)-linux-amd64 ./cmd/srv
 
 build-freebsd:
-	GOOS=freebsd GOARCH=amd64 go build -o $(BINARY)-freebsd-amd64 ./cmd/srv
+	GOOS=freebsd GOARCH=amd64 go build -trimpath -o $(BINARY)-freebsd-amd64 ./cmd/srv
 
 build-all: build-linux build-freebsd
 	@echo "Built: $(BINARY)-linux-amd64, $(BINARY)-freebsd-amd64"

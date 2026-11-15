@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>rsync-web</title>
     <link rel="icon" type="image/png" href="/static/logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/tailwind.css">
     <style>
         .output-scroll { max-height: 400px; overflow-y: auto; }
         .file-entry:hover { background-color: #f3f4f6; }
@@ -17,14 +17,14 @@
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl">
         <!-- Header -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="flex justify-between items-center">
-                <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2"><img src="/static/logo.png" alt="logo" class="w-10 h-10"> rsync-web</h1>
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2"><img src="/static/logo.png" alt="logo" class="w-10 h-10"> rsync-web</h1>
                 <div id="status-badge" class="text-sm"></div>
             </div>
-            <p id="workdir" class="text-gray-600 mt-2"></p>
+            <p id="workdir" class="text-gray-600 mt-2 break-all"></p>
         </div>
 
         <!-- Warning Banner -->
@@ -36,13 +36,13 @@
             <!-- Left Column: Command Builder -->
             <div class="space-y-6">
                 <!-- Source/Destination -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <h2 class="text-xl font-semibold mb-4">📁 Source & Destination</h2>
                     
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
                         <div class="flex gap-2">
-                            <input type="text" id="source" class="flex-1 border rounded-md px-3 py-2" placeholder="/path/to/source or host:/path">
+                            <input type="text" id="source" class="flex-1 min-w-0 border rounded-md px-3 py-2" placeholder="/path/to/source or host:/path">
                             <button onclick="openBrowser('source')" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">Browse</button>
                             <button onclick="openHostPicker('source')" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600">SSH</button>
                         </div>
@@ -51,7 +51,7 @@
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
                         <div class="flex gap-2">
-                            <input type="text" id="destination" class="flex-1 border rounded-md px-3 py-2" placeholder="/path/to/dest or host:/path">
+                            <input type="text" id="destination" class="flex-1 min-w-0 border rounded-md px-3 py-2" placeholder="/path/to/dest or host:/path">
                             <button onclick="openBrowser('destination')" class="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600">Browse</button>
                             <button onclick="openHostPicker('destination')" class="bg-purple-500 text-white px-3 py-2 rounded-md hover:bg-purple-600">SSH</button>
                         </div>
@@ -64,7 +64,7 @@
                 </div>
 
                 <!-- Options -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <h2 class="text-xl font-semibold mb-4">⚙️ Options</h2>
                     
                     <!-- Common Options -->
@@ -204,7 +204,7 @@
                 </div>
 
                 <!-- Command Preview & Run -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <h2 class="text-xl font-semibold mb-4">🚀 Command</h2>
                     <pre id="command-preview" class="bg-gray-800 text-green-400 p-4 rounded-md text-sm overflow-x-auto mb-2"></pre>
                     <div id="validation-errors" class="mb-2 hidden"></div>
@@ -214,7 +214,7 @@
                         <button onclick="copyCommand()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">📋 Copy</button>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="saveDefaults()" class="flex-1 bg-indigo-500 text-white px-3 py-1.5 rounded-md hover:bg-indigo-600 text-sm">💾 Save Options as Default</button>
+                        <button onclick="saveDefaults()" class="flex-1 min-w-0 bg-indigo-500 text-white px-3 py-1.5 rounded-md hover:bg-indigo-600 text-sm">💾 Save Options as Default</button>
                         <button onclick="clearDefaults()" class="bg-gray-400 text-white px-3 py-1.5 rounded-md hover:bg-gray-500 text-sm">Clear</button>
                     </div>
                 </div>
@@ -223,13 +223,13 @@
             <!-- Right Column: Jobs & Output -->
             <div class="space-y-6">
                 <!-- Running Jobs -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <h2 class="text-xl font-semibold mb-4">📊 Jobs</h2>
                     <div id="jobs-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
                 </div>
 
                 <!-- Output -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold">📜 Output</h2>
                         <span id="current-job-label" class="text-sm text-gray-500"></span>
@@ -241,7 +241,7 @@
                 </div>
 
                 <!-- History -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
                     <h2 class="text-xl font-semibold mb-4">📜 History</h2>
                     <div id="history-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
@@ -250,7 +250,7 @@
     </div>
 
     <!-- File Browser Modal -->
-    <div id="browser-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="browser-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div class="p-4 border-b flex justify-between items-center">
                 <h3 class="text-lg font-semibold">Browse Files</h3>
@@ -279,7 +279,7 @@
     </div>
 
     <!-- SSH Host Picker Modal -->
-    <div id="ssh-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="ssh-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div class="p-4 border-b flex justify-between items-center">
                 <h3 class="text-lg font-semibold">SSH Hosts</h3>
