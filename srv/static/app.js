@@ -30,7 +30,9 @@ async function loadStatus() {
         const res = await fetch('/api/status');
         const data = await res.json();
         
-        document.getElementById('workdir').textContent = `Working directory: ${data.work_dir}`;
+        const gb = n => (n / 1e9).toFixed(n < 1e11 ? 1 : 0) + ' GB';
+        document.getElementById('workdir').textContent = `Working directory: ${data.work_dir}` +
+            (data.disk_total ? ` · ${gb(data.disk_free)} free of ${gb(data.disk_total)}` : '');
         
         if (data.rsync_available) {
             document.getElementById('status-badge').innerHTML = 

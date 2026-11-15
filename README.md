@@ -19,6 +19,7 @@ A modern, lightweight web UI for rsync with real-time output streaming via WebSo
 - **Exclude patterns** - Multi-line exclude support
 - **Custom options** - Add any rsync flag (e.g., `--bwlimit=1000`)
 - **rsync availability check** - Warns if rsync isn't installed on the system
+- **Disk space** - `GET /api/status` includes `disk_total` and `disk_free` (bytes) for the working directory
 - **Cross-platform** - Works on Linux and FreeBSD
 
 ## Installation

@@ -44,6 +44,8 @@ type StatusResponse struct {
 	RsyncVersion   string `json:"rsync_version"`
 	WorkDir        string `json:"work_dir"`
 	RunningJobs    int    `json:"running_jobs"`
+	DiskTotal      uint64 `json:"disk_total,omitempty"` // bytes, filesystem holding the working directory
+	DiskFree       uint64 `json:"disk_free,omitempty"`  // bytes available to this user
 }
 
 func (s *Server) HandleStatus(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +55,7 @@ func (s *Server) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		WorkDir:        s.WorkDir,
 		RunningJobs:    s.JobManager.RunningCount(),
 	}
+	resp.DiskTotal, resp.DiskFree = diskSpace(s.WorkDir)
 	
 	if s.RsyncPath != "" {
 		out, err := exec.Command(s.RsyncPath, "--version").Output()
