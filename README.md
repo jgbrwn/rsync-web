@@ -69,6 +69,21 @@ Then open http://127.0.0.1:8000 in your browser.
 |------|---------|-------------|
 | `-listen` | `127.0.0.1:8000` | Address and port to listen on |
 | `-dir` | Current directory | Working directory for file browsing |
+| `-preset NAME=DEST` | none | One-click destination shown under *Destination*; repeatable (e.g. `-preset Movies=nas:media/movies/`) |
+| `-preset-opts` | safe copy flags | Comma- or space-separated rsync options used by presets and `/api/push` (default `-v -P -h -r -l -p -t -H --no-o --no-g --omit-dir-times --timeout=185`, never `--delete`) |
+| `-push-root DIR` | off | Enables `POST /api/push`: sends a direct child of `DIR` (relative to `-dir`) to a preset |
+| `-webhook URL` | off | POSTs a JSON summary when any job finishes; signed with `X-Rsync-Web-Signature: sha256=<HMAC>` when `RSYNC_WEB_WEBHOOK_SECRET` is set |
+
+## Automation API
+
+- `GET /api/presets`: `{presets, options, push_root}`.
+- `POST /api/push` `{"name": "Movie (2020)", "preset": "Movies"}`: a narrow alternative to `/api/run` for scripts. It only
+  sends an existing direct child of `-push-root`, using the preset's destination and options. Returns the history row.
+- Webhook body: `{"id", "status", "exit_code", "source", "destination", "finished_at"}`. Verify the signature as
+  HMAC-SHA256 of the raw body with your secret.
+
+Options are normalized before running: shell-style quotes are removed (`--exclude='/temp/'` becomes
+`--exclude=/temp/`, since there is no shell to strip them) and exact duplicates are dropped.
 
 ## How It Works
 
@@ -101,6 +116,8 @@ All features work identically on FreeBSD and Linux.
 - By default, listens only on `127.0.0.1` (localhost)
 - File browser is restricted to the working directory and subdirectories
 - No authentication built-in - use a reverse proxy if exposing to a network
+- Cross-site protection: state-changing requests and WebSocket handshakes from another origin are refused, and POST
+  bodies must be `application/json` (so a web page can't drive rsync-web through a browser's cached proxy login)
 
 ## License
 

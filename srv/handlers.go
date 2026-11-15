@@ -33,7 +33,7 @@ func (s *Server) HandleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: sameOrigin,
 }
 
 
@@ -241,29 +241,7 @@ func (s *Server) HandleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	// Build command
-	args := append(req.Options, req.Source, req.Destination)
-	fullCmd := fmt.Sprintf("rsync %s", strings.Join(args, " "))
-	
-	optionsJSON, _ := json.Marshal(req.Options)
-	
-	q := dbgen.New(s.DB)
-	history, err := q.CreateRsyncHistory(r.Context(), dbgen.CreateRsyncHistoryParams{
-		Source:      req.Source,
-		Destination: req.Destination,
-		Options:     string(optionsJSON),
-		FullCommand: fullCmd,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	
-	// Start the job
-	go s.JobManager.RunJob(history.ID, args)
-	
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	s.startJob(w, r, req.Source, req.Destination, req.Options)
 }
 
 func (s *Server) HandleCancel(w http.ResponseWriter, r *http.Request) {
@@ -436,7 +414,7 @@ func (jm *JobManager) Cancel(id int64) error {
 		return fmt.Errorf("job not found")
 	}
 	
-	close(job.cancel)
+	job.cancelOnce.Do(func() { close(job.cancel) })
 	return nil
 }
 
@@ -473,7 +451,8 @@ func (jm *JobManager) RunJob(id int64, args []string) {
 	if err != nil {
 		job.addOutput(fmt.Sprintf("Error starting rsync: %v", err))
 		job.finish("failed", 1)
-		jm.saveJob(job, startTime)
+		jm.saveJob(job, startTime, 1)
+		go jm.server.notifyWebhook(id, "failed", 1)
 		return
 	}
 	defer ptmx.Close()
@@ -497,7 +476,8 @@ func (jm *JobManager) RunJob(id int64, args []string) {
 	}
 	
 	job.finish(status, exitCode)
-	jm.saveJob(job, startTime)
+	jm.saveJob(job, startTime, exitCode)
+	go jm.server.notifyWebhook(id, status, exitCode)
 }
 
 func (jm *JobManager) readPtyOutput(job *Job, r io.Reader) {
@@ -536,14 +516,14 @@ func (jm *JobManager) readPtyOutput(job *Job, r io.Reader) {
 	}
 }
 
-func (jm *JobManager) saveJob(job *Job, startTime time.Time) {
+func (jm *JobManager) saveJob(job *Job, startTime time.Time, code int) {
 	job.mu.RLock()
 	output := strings.Join(job.Output, "\n")
 	status := job.Status
 	job.mu.RUnlock()
 	
 	endTime := time.Now()
-	exitCode := int64(0)
+	exitCode := int64(code)
 	
 	q := dbgen.New(jm.server.DB)
 	q.UpdateRsyncStatus(context.Background(), dbgen.UpdateRsyncStatusParams{

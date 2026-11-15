@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     loadSSHHosts();
     loadDefaults();
+    loadPresets();
     updateCommandPreview();
     
     // Update preview on input changes
@@ -44,6 +45,40 @@ async function loadStatus() {
     } catch (e) {
         console.error('Failed to load status:', e);
     }
+}
+
+async function loadPresets() {
+    try {
+        const res = await fetch('/api/presets');
+        const data = await res.json();
+        if (!data.presets || !data.presets.length) return;
+        const box = document.getElementById('preset-buttons');
+        box.innerHTML = '';
+        data.presets.forEach(p => {
+            const b = document.createElement('button');
+            b.className = 'bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 text-sm';
+            b.textContent = '→ ' + p.name;
+            b.title = p.destination;
+            b.onclick = () => applyPreset(p, data.options);
+            box.appendChild(b);
+        });
+        document.getElementById('presets').classList.remove('hidden');
+    } catch (e) {
+        console.error('Failed to load presets:', e);
+    }
+}
+
+function applyPreset(preset, options) {
+    document.getElementById('destination').value = preset.destination;
+    const known = new Set();
+    document.querySelectorAll('.rsync-opt').forEach(el => {
+        el.checked = options.includes(el.dataset.opt);
+        known.add(el.dataset.opt);
+    });
+    const timeout = options.find(o => o.startsWith('--timeout='));
+    if (document.getElementById('timeout')) document.getElementById('timeout').value = timeout ? timeout.split('=')[1] : '';
+    document.getElementById('custom-opts').value = options.filter(o => !known.has(o) && !o.startsWith('--timeout=')).join(' ');
+    updateCommandPreview();
 }
 
 async function loadSSHHosts() {
@@ -319,7 +354,7 @@ async function cancelJob() {
     if (!currentJobId) return;
     
     try {
-        await fetch(`/api/cancel/${currentJobId}`, { method: 'POST' });
+        await fetch(`/api/cancel/${currentJobId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         loadHistory();
     } catch (e) {
         console.error('Failed to cancel:', e);

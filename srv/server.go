@@ -18,6 +18,7 @@ type Server struct {
 	WorkDir    string
 	RsyncPath  string
 	JobManager *JobManager
+	Opts       Options
 	staticFS   fs.FS
 }
 
@@ -34,9 +35,10 @@ type Job struct {
 	Status      string
 	subscribers map[chan string]struct{}
 	cancel      chan struct{}
+	cancelOnce  sync.Once
 }
 
-func New(dbPath, workDir string) (*Server, error) {
+func New(dbPath, workDir string, opts ...Options) (*Server, error) {
 	if workDir == "" {
 		var err error
 		workDir, err = os.Getwd()
@@ -57,6 +59,9 @@ func New(dbPath, workDir string) (*Server, error) {
 		WorkDir:   workDir,
 		RsyncPath: rsyncPath,
 		staticFS:  staticSub,
+	}
+	if len(opts) > 0 {
+		srv.Opts = opts[0]
 	}
 	
 	srv.JobManager = &JobManager{
@@ -94,6 +99,8 @@ func (s *Server) Serve(addr string) error {
 	mux.HandleFunc("GET /api/ssh-hosts", s.HandleSSHHosts)
 	mux.HandleFunc("GET /api/history", s.HandleHistory)
 	mux.HandleFunc("POST /api/run", s.HandleRun)
+	mux.HandleFunc("GET /api/presets", s.HandlePresets)
+	mux.HandleFunc("POST /api/push", s.HandlePush)
 	mux.HandleFunc("POST /api/cancel/{id}", s.HandleCancel)
 	mux.HandleFunc("DELETE /api/history/{id}", s.HandleDeleteHistory)
 	mux.HandleFunc("GET /api/job/{id}", s.HandleGetJob)
@@ -104,6 +111,6 @@ func (s *Server) Serve(addr string) error {
 	// Static files (embedded)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(s.staticFS))))
 	
-	slog.Info("starting rsync-web", "addr", addr, "workdir", s.WorkDir, "rsync", s.RsyncPath)
-	return http.ListenAndServe(addr, mux)
+	slog.Info("starting rsync-web", "addr", addr, "workdir", s.WorkDir, "rsync", s.RsyncPath, "presets", len(s.Opts.Presets), "webhook", s.Opts.WebhookURL != "")
+	return http.ListenAndServe(addr, s.guard(mux))
 }
