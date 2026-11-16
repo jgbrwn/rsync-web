@@ -1,0 +1,50 @@
+/* Dark theme (the default). Overrides the light Tailwind utilities used by index.html and app.js.
+   html.light switches back to the original light look. */
+html.dark {
+  color-scheme: dark;
+  --bg: #0e0f12; --surface: #16181d; --surface-2: #1d2027; --line: #2a2e37;
+  --text: #ece9e4; --muted: #9a968e; --faint: #6f6c66;
+}
+html.dark body { background: var(--bg); color: var(--text); }
+html.dark .bg-gray-100 { background-color: var(--bg); }
+html.dark .bg-white { background-color: var(--surface); }
+html.dark .bg-gray-50 { background-color: var(--surface-2); }
+html.dark .shadow-md { box-shadow: none; border: 1px solid var(--line); }
+html.dark .text-gray-800, html.dark .text-gray-700 { color: var(--text); }
+html.dark .text-gray-600, html.dark .text-gray-500 { color: var(--muted); }
+html.dark .text-gray-400 { color: var(--faint); }
+html.dark .hover\:text-gray-700:hover { color: var(--text); }
+html.dark .hover\:bg-gray-100:hover, html.dark .file-entry:hover { background-color: var(--surface-2); }
+html.dark .border, html.dark .border-t, html.dark .border-b, html.dark .border-gray-700 { border-color: var(--line); }
+html.dark .bg-gray-300 { background-color: #3a3f4a; color: var(--text); }
+html.dark .bg-gray-400, html.dark .hover\:bg-gray-400:hover { background-color: #4a505c; color: var(--text); }
+html.dark .bg-gray-800 { background-color: #0b0c0f; border: 1px solid var(--line); }
+html.dark .bg-gray-900 { background-color: #0b0c0f; border: 1px solid var(--line); }
+html.dark .bg-blue-50 { background-color: rgb(59 130 246 / .12); }
+html.dark .bg-blue-100 { background-color: rgb(59 130 246 / .18); }
+html.dark .bg-green-100 { background-color: rgb(34 197 94 / .16); }
+html.dark .bg-red-100 { background-color: rgb(239 68 68 / .16); }
+html.dark .border-red-400 { border-color: rgb(239 68 68 / .5); }
+html.dark .text-blue-700 { color: #93b4fd; }
+html.dark .text-green-800 { color: #86efac; }
+html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5; }
+html.dark .text-yellow-600 { color: #facc15; }
+html.dark .bg-black.bg-opacity-50 { background-color: rgb(0 0 0 / .7); }
+html.dark input[type=text], html.dark input:not([type]), html.dark select, html.dark textarea {
+  background-color: var(--bg); color: var(--text); border-color: var(--line);
+}
+html.dark input::placeholder, html.dark textarea::placeholder { color: var(--faint); }
+html.dark .status-running { color: #60a5fa; }
+html.dark .status-completed { color: #4ade80; }
+html.dark .status-failed { color: #f87171; }
+html.dark .status-cancelled { color: #c084fc; }
+html.dark .status-pending { color: #facc15; }
+
+.theme-toggle {
+  width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 8px;
+  border: 1px solid #d1d5db; background: transparent; color: inherit; cursor: pointer;
+}
+html.dark .theme-toggle { border-color: var(--line); color: var(--muted); }
+.theme-toggle:hover { color: inherit; border-color: #9ca3af; }
+.theme-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+html.dark .theme-toggle .sun, html:not(.dark) .theme-toggle .moon { display: none; }

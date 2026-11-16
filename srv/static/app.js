@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDefaults();
     loadPresets();
     updateCommandPreview();
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+        document.documentElement.className = next;
+        try { localStorage.setItem('rsync-web-theme', next); } catch (e) {}
+    });
     
     // Update preview on input changes
     document.querySelectorAll('.rsync-opt, #source, #destination, #excludes, #custom-opts, #timeout').forEach(el => {
