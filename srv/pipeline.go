@@ -88,6 +88,8 @@ func (s *Server) HandlePresets(w http.ResponseWriter, r *http.Request) {
 
 // HandlePush is a narrow alternative to /api/run for automation: it can only send an existing
 // direct child of PushRoot to a configured preset, with the preset options.
+// "remove_source": true adds --remove-source-files (rsync deletes each file from the push root once it has been
+// sent and verified; folders stay), for callers that free space as they go.
 func (s *Server) HandlePush(w http.ResponseWriter, r *http.Request) {
 	if s.RsyncPath == "" {
 		http.Error(w, "rsync not available", http.StatusServiceUnavailable)
@@ -98,8 +100,9 @@ func (s *Server) HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Name   string `json:"name"`
-		Preset string `json:"preset"`
+		Name         string `json:"name"`
+		Preset       string `json:"preset"`
+		RemoveSource bool   `json:"remove_source"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -125,7 +128,11 @@ func (s *Server) HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source := filepath.ToSlash(filepath.Join(s.Opts.PushRoot, req.Name))
-	s.startJob(w, r, source, preset.Destination, s.presetOptions())
+	opts := append([]string{}, s.presetOptions()...)
+	if req.RemoveSource {
+		opts = append(opts, "--remove-source-files")
+	}
+	s.startJob(w, r, source, preset.Destination, opts)
 }
 
 // startJob records a job in history, starts it and writes the history row as JSON.

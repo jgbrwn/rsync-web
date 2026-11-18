@@ -80,6 +80,8 @@ Then open http://127.0.0.1:8000 in your browser.
 - `GET /api/presets`: `{presets, options, push_root}`.
 - `POST /api/push` `{"name": "Movie (2020)", "preset": "Movies"}`: a narrow alternative to `/api/run` for scripts. It only
   sends an existing direct child of `-push-root`, using the preset's destination and options. Returns the history row.
+  Add `"remove_source": true` to have rsync delete each file from the push root once it has been sent (`--remove-source-files`;
+  folders stay), for callers that free space as they go.
 - Webhook body: `{"id", "status", "exit_code", "source", "destination", "finished_at"}`. Verify the signature as
   HMAC-SHA256 of the raw body with your secret.
 

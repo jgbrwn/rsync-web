@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNormalizeOptions(t *testing.T) {
@@ -73,5 +75,51 @@ func TestPushValidation(t *testing.T) {
 		if w.Code != c.want {
 			t.Errorf("%q/%q: got %d want %d (%s)", c.name, c.preset, w.Code, c.want, w.Body.String())
 		}
+	}
+}
+
+func TestPushRemoveSource(t *testing.T) {
+	if _, err := exec.LookPath("rsync"); err != nil {
+		t.Skip("rsync not installed")
+	}
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "media", "Show S01", "Season 1"), 0o755)
+	os.MkdirAll(filepath.Join(dir, "out"), 0o755)
+	os.WriteFile(filepath.Join(dir, "media", "Show S01", "Season 1", "e1.mkv"), []byte("one"), 0o644)
+	s, err := New(filepath.Join(dir, "db.sqlite"), dir, Options{PushRoot: "media", Presets: []Preset{{"TV", filepath.Join(dir, "out") + "/"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	push := func(remove bool) {
+		b, _ := json.Marshal(map[string]any{"name": "Show S01", "preset": "TV", "remove_source": remove})
+		w := httptest.NewRecorder()
+		s.HandlePush(w, httptest.NewRequest("POST", "/api/push", bytes.NewReader(b)))
+		if w.Code != 200 {
+			t.Fatalf("push: %d %s", w.Code, w.Body.String())
+		}
+	}
+	src := filepath.Join(dir, "media", "Show S01", "Season 1", "e1.mkv")
+	dst := filepath.Join(dir, "out", "Show S01", "Season 1", "e1.mkv")
+	wait := func(cond func() bool) bool {
+		for i := 0; i < 100; i++ {
+			if cond() {
+				return true
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		return false
+	}
+	exists := func(p string) bool { _, err := os.Stat(p); return err == nil }
+	push(false)
+	if !wait(func() bool { return exists(dst) }) || !exists(src) {
+		t.Fatal("plain push must copy and keep the source")
+	}
+	os.Remove(dst)
+	push(true)
+	if !wait(func() bool { return exists(dst) && !exists(src) }) {
+		t.Fatal("remove_source must copy, then remove the source file")
+	}
+	if !exists(filepath.Join(dir, "media", "Show S01", "Season 1")) {
+		t.Fatal("folders stay")
 	}
 }
